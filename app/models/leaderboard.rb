@@ -24,41 +24,32 @@ class Leaderboard < ActiveRecord::Base
       return noCourseAssignments
     end
   
-  
+  # This method gets all the assignments related to the courses in the coursesArray
   def self.getAssignmentsInCourses(courseArray)
     assignmentList = Assignment.find(:all, 
                                      :conditions => ["course_id in (?)", courseArray])
   end
   
-  # This method gets all tuples in the Participants table associated
-  # with a course in the courseArray and puts them into a hash structure
-  # hierarchy (qtype => course => user => score)
-  
-  
-  
+
+  #This method gets all the assignments in the courseArray and all the assignments submitted by the user_id.
   def self.getParticipantEntriesInCourses(courseArray, user_id)
      assignmentList = getAssignmentsInCourses(courseArray)
      independantAssignments = getIndependantAssignments(user_id)
     for iA in independantAssignments
-         assignmentList <<iA
+         assignmentList << iA
     end
      questionnaireHash = getParticipantEntriesInAssignmentList(assignmentList)
   end
   
-  # This method gets all tuples in the Participants table associated
-  # with a specific assignment and puts them into a hash structure
-  # hierarchy (qtype => course => user => score).
-  
-  
+  #This method gets the assignment record pertaining to the assignment_id
   def self.getParticipantEntriesInAssignment(assignmentID)
     assignmentList = Array.new
     assignmentList << Assignment.find(assignmentID)
     questionnaireHash = getParticipantEntriesInAssignmentList(assignmentList)
   end
   
-  # This method gets all tuples in the Participants table associated
-  # with an assignment in the assignmentList and puts them into a hash 
-  # structure hierarchy (qtype => course => user => score).
+  #This is the main method which does most of the functionality in the leaderboard.rb. Its functionality is explained as we
+  #go through the method.
   def self.getParticipantEntriesInAssignmentList(assignmentList)
 
     #Creating an assignment id to course id hash
@@ -67,7 +58,7 @@ class Leaderboard < ActiveRecord::Base
     assQuestionnaires = Hash.new
   
     for assgt in assignmentList
-        
+        #Populate the assignmentCourseHashtable with assignment id and course id
         if assgt.course_id != nil
              assCourseHash[assgt.id] = assgt.course_id
         else
@@ -75,8 +66,11 @@ class Leaderboard < ActiveRecord::Base
         end
         @revqids = []
         differentQuestionnaires = Hash.new
+
+        #Gets the review question ids from the assignmentQuestionnaires table.
         @revqids = AssignmentQuestionnaires.find(:all, :conditions => ["assignment_id = ?",assgt.id])
         @revqids.each do |rqid|
+          # there are bunch of question types available in Questionnaire table
             rtype = Questionnaire.find(rqid.questionnaire_id).type
             if( rtype == 'ReviewQuestionnaire')
             
@@ -95,6 +89,7 @@ class Leaderboard < ActiveRecord::Base
         end # end of each.do block
          
         assQuestionnaires[assgt.id] = differentQuestionnaires
+        #populate the TeamHash with assignment_id and the flag indicating either team assignment or individual assignment
         
         if (assgt.team_assignment)
           assTeamHash[assgt.id] = "team"
@@ -104,7 +99,8 @@ class Leaderboard < ActiveRecord::Base
     end
     # end of first for
     
-   
+    #get the assignments where the user has participated using parent_id. The parent_id definition is given below(for understanding purposes)
+    #parentid = Id of corresponding assignment for which the user is a participant in.
     participantList = AssignmentParticipant.find(:all,
                                              :select => "id, user_id, parent_id",
                                              :conditions => ["parent_id in (?)", assignmentList])
